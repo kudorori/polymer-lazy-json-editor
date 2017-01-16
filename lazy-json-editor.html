@@ -1,0 +1,484 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-material/paper-material.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="lazy-json-editor-icons.html">
+<link rel="import" href="../lazy-object2array/lazy-object2array.html">
+<link rel="import" href="../iron-collapse/iron-collapse.html">
+<link rel="import" href="../paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../iron-dropdown/iron-dropdown.html">
+<!--
+`lazy-json-editor`
+
+
+@demo demo/index.html 
+-->
+
+
+<script>
+	var lazyJsonBehavior={
+		isObject:function(item){
+			return typeof(item)=="object"&&!Array.isArray(item);
+		},
+		isArray:function(item){
+			return Array.isArray(item);			
+		},
+		toArray:function(item){
+			return Object.keys(item.base).map(function(key){
+				return {key:key,value:item.base[key]};
+			});
+		},
+		isBoolean:function(item){
+			return typeof(item)=="boolean";
+		},
+		isNumber:function(item){
+			return typeof(item)=="number";
+		},
+		isString:function(item){
+			return typeof(item)=="string";
+		}
+	}
+</script>
+
+
+<dom-module id="lazy-json-editor">
+	<style include="iron-flex">
+		:host{
+			display:block;
+		}
+		paper-material{
+			padding:6px;
+		}
+	</style>
+	<template>
+    	<paper-material class="layout horizontal" style="overflow:auto;">
+    		<lazy-json-left-control style="border-right:1px solid #ddd" json="{{json}}"></lazy-json-left-control>
+    		<div class="flex" style="overflow:auto;">
+	    		<template is="dom-if" if="[[isObject(json)]]" restamp>
+	    			<lazy-json-tree-object object="{{json}}"></lazy-json-tree-object>
+	    		</template>
+	    		<template is="dom-if" if="[[isArray(json)]]" restamp>
+	    			<lazy-json-tree-array array="{{json}}"></lazy-json-tree-array>
+	    		</template>
+    		</div>
+    		<div class="right-control">
+    		</div>
+    	</paper-material>
+    	<button on-click="print">Print</button>
+	</template>
+	<script>
+	    Polymer({
+	      	is: 'lazy-json-editor',
+	      	behaviors:[
+		      	lazyJsonBehavior
+	      	],
+	      	properties: {
+		        json:{
+			        type:Object,
+			        notify:true,
+			        value:[
+				    ]
+		        },
+		        text:{
+			        type:String,
+			        value:""
+		        }
+	      	},
+	      	print:function(){
+		      	console.log(this.json);
+	      	}
+	    });
+  	</script>
+</dom-module>
+
+<dom-module id="lazy-json-left-control-menu">
+	<template>
+		<paper-icon-button icon="add"></paper-icon-button>
+		<iron-dropdown>
+		</iron-dropdown>
+	</template>
+	<script>
+		Polymer({
+			is:"lazy-json-left-control-menu"
+		})
+	</script>
+</dom-module>
+
+<dom-module id="lazy-json-left-control">
+	<style>
+		:host{
+			display:block;
+			width:50px;
+		}
+	</style>
+	<template>
+		<template is="dom-if" if="[[isObject(json)]]">
+			<lazy-object2array object="{{json}}" array="{{items}}"></lazy-object2array>
+			<template is="dom-repeat" items="[[items]]">
+				<template is="dom-if" if="[[__isObjectOrArray(item.value)]]">
+					<lazy-json-left-control json="[[item.value]]"></lazy-json-left-control>
+				</template>
+				<template is="dom-if" if="[[!__isObjectOrArray(item.value)]]">
+					<div>
+						<lazy-json-left-control-menu></lazy-json-left-control-menu>
+					</div>
+				</template>
+			</template>
+		</template>
+		<template is="dom-if" if="[[isArray(json)]]">
+			<template is="dom-repeat" items="[[json]]">
+				<div>
+					<lazy-json-left-control-menu></lazy-json-left-control-menu>
+				</div>
+				<template is="dom-if" if="[[__isObjectOrArray(item)]]">
+					<lazy-json-left-control json="[[item]]"></lazy-json-left-control>
+				</template>
+			</template>
+		</template>
+	</template>
+	<script>
+		Polymer({
+			is:"lazy-json-left-control",
+			properties:{
+				json:{
+					type:Object,
+					notify:true
+				}
+			},
+			behaviors:[
+				lazyJsonBehavior
+			],
+			__isObjectOrArray:function(item){
+				return (typeof(item)=="object");
+			}
+		})
+	</script>
+</dom-module>
+
+<dom-module id="lazy-json-tree-object">
+	<style include="iron-flex">
+		:host{
+			display:block;
+		}
+		paper-icon-button{
+			--paper-icon-button:{
+				width:30px;
+				height:30px;
+			};
+		}
+		.input{
+			border:1px dashed #aaa;
+			padding:3px 12px;
+		}
+
+	</style>
+	<template>
+		<lazy-object2array object="{{object}}" array="{{items}}"></lazy-object2array>
+		<array-selector id="selector" items="{{items}}" selected="{{selected}}" multi toggle></array-selector>
+		<template is="dom-repeat" items="{{items}}">
+			<div class="layout horizontal center">
+				<div class="input"on-input="__changeKey" contenteditable="true">{{item.key}}</div>
+				<span style="margin:0px 6px;"></span>
+				<div class="flex">
+		    		<template is="dom-if" if="[[isString(item.value)]]" restamp>
+		    			<div class="input" on-input="__changeValue" contenteditable="true">{{item.value}}</div>
+		    		</template>
+		    		<template is="dom-if" if="[[isNumber(item.value)]]" restamp>
+		    			<div class="input" on-input="__changeValue" contenteditable="true">{{item.value}}</div>
+		    		</template>
+		    		<template is="dom-if" if="[[isBoolean(item.value)]]" restamp>
+		    			<paper-checkbox checked="{{item.value}}"></paper-checkbox>
+		    		</template>
+				</div>
+			</div>
+			<iron-collapse opened="[[__hasCollapse(item,selected.*)]]">
+				<div style="margin-left:15px;">
+					<template is="dom-if" if="[[isObject(item.value)]]" restamp>
+		    			<lazy-json-tree-object object="{{item.value}}"></lazy-json-tree-object>
+		    		</template>
+		    		<template is="dom-if" if="[[isArray(item.value)]]" restamp>
+		    			<lazy-json-tree-array array="{{item.value}}"></lazy-json-tree-array>
+		    		</template>
+				</div>
+			</iron-collapse>
+		</template>
+	</template>
+	<script>
+		Polymer({
+			is:"lazy-json-tree-object",
+			behaviors:[
+				lazyJsonBehavior
+			],
+			__changeKey:function(e){
+				e.model.set("item.key",e.target.textContent);
+			},
+			__changeValue:function(e){
+				e.model.set("item.value",e.target.textContent);
+			},
+			properties:{
+				selector:{
+					value:[]
+				},
+				object:{
+					type:Object,
+					notify:true
+				},
+				items:{
+					type:Object,
+					value:[]
+				},
+				is_add:{
+					type:Boolean,
+					value:false
+				}
+			},
+			__toggleAdd:function(){
+				this.is_add=this.is_add?false:true;
+			},
+			__add:function(e){
+				var key = this.$.addInput.value;
+				var value = "";
+				console.log(key);
+				if(key==undefined||key==""){
+					return;
+				}
+				var detail = e.detail;
+				switch(detail.type){
+					case "string":
+						break;
+					case "number":
+						value=0;
+						break;
+					case "object":
+						value={};
+						break;
+					case "boolean":
+						value=false;
+						break;
+					case "array":
+						value=[];
+						break;
+				}
+				this.set("object."+key,value);
+				console.log(this.object);
+// 				this.push("items",{key:key,value:value});
+// 				console.log(this.object,this.items);
+			},
+			__delItem:function(e){
+				var key = e.model.item.key;
+				var check = this.items.filter(function(item){
+					return item.key==key;
+				});
+				console.log(check,key,this.items);
+				check.forEach(function(item){
+					var i = this.items.indexOf(item);
+					this.splice("items",i,1);
+				}.bind(this))
+			},
+			__isObjectOrArray:function(item){
+				return !(typeof(item)=="object");
+			},
+			__hasCollapse:function(item,selector){
+				return !(selector.base.indexOf(item)!=-1);
+			},
+			__toggleCollapse:function(e){
+				var model = e.model;
+				this.$.selector.select(model.item);
+			}
+		})
+	</script>
+</dom-module>
+<dom-module id="lazy-json-tree-array">
+<style include="iron-flex">
+		:host{
+/* 			display:block; */
+/* 			border:1px dashed #ccc; */
+/* 			overflow:auto; */
+/* 			min-width:300px; */
+/* 			width:100%; */
+		}
+		paper-icon-button{
+			--paper-icon-button:{
+				width:30px;
+				height:30px;
+			};
+		}
+		input{
+			border:1px dashed #aaa;
+			padding:3px 12px;
+		}
+		.item{
+			height:40px;
+		}
+	</style>
+	<template>
+		<array-selector id="selector" items="{{array}}" selected="{{selected}}" multi toggle></array-selector>
+<!--
+		<div class="layout horizontal center">
+			<div class="flex">
+				<iron-collapse opened="[[is_add]]">
+					<div>
+						<lazy-json-editor-add-control on-add-click="__add"></lazy-json-editor-add-control>
+					</div>
+				</iron-collapse>
+			</div>
+			<div>
+				<paper-icon-button icon="add" on-click="__toggleAdd"></paper-icon-button>
+			</div>
+		</div>
+-->
+		<template is="dom-repeat" items="{{array}}">
+			<div class="layout horizontal center item">
+				<div>
+					<paper-icon-button icon="icons:arrow-drop-down" disabled="[[__isObjectOrArray(item)]]" on-click="__toggleCollapse"></paper-icon-button>
+				</div>
+				<div>
+					[[index]]
+				</div>
+				<span style="margin:0px 6px;"></span>
+				<div class="flex">
+		    		<template is="dom-if" if="[[isString(item)]]" restamp>
+		    			<input type="text" value="{{item::input}}"/>
+		    		</template>
+		    		<template is="dom-if" if="[[isNumber(item)]]" restamp>
+		    			<input type="number" value="{{item::input}}"/>
+		    		</template>
+		    		<template is="dom-if" if="[[isBoolean(item)]]" restamp>
+		    			Boolean
+		    		</template>
+				</div>
+<!-- 				<paper-icon-button icon="delete" on-click="__delItem"></paper-icon-button> -->
+			</div>
+			<iron-collapse opened="[[__hasCollapse(item,selected.*)]]">
+				<div style="margin-left:15px;">
+					<template is="dom-if" if="[[isObject(item)]]" restamp>
+		    			<lazy-json-tree-object object="{{item}}"></lazy-json-tree-object>
+		    		</template>
+		    		<template is="dom-if" if="[[isArray(item)]]" restamp>
+		    			<lazy-json-tree-array array="{{item}}"></lazy-json-tree-array>
+		    		</template>
+				</div>
+			</iron-collapse>
+		</template>
+	</template>
+	<script>
+		Polymer({
+			is:"lazy-json-tree-array",
+			properties:{
+				array:{
+					type:Object,
+					notify:true
+				},
+				is_add:{
+					type:Boolean,
+					value:false
+				}
+			},
+			behaviors:[
+				lazyJsonBehavior
+			],
+			__toggleAdd:function(){
+				this.is_add=this.is_add?false:true;
+			},
+			__add:function(e){
+				var value = "";
+				var detail = e.detail;
+				switch(detail.type){
+					case "string":
+						break;
+					case "number":
+						value=0;
+						break;
+					case "object":
+						value={};
+						break;
+					case "boolean":
+						value=false;
+						break;
+					case "array":
+						value=[];
+						break;
+				}
+				this.push("array",value);
+// 				this.push("items",{key:key,value:value});
+// 				console.log(this.object,this.items);
+			},
+			__delItem:function(e){
+				var key = e.model.item.key;
+				var check = this.items.filter(function(item){
+					return item.key==key;
+				});
+				console.log(check,key,this.items);
+				check.forEach(function(item){
+					var i = this.items.indexOf(item);
+					this.splice("items",i,1);
+				}.bind(this))
+			},
+			__isObjectOrArray:function(item){
+				return !(typeof(item)=="object");
+			},
+			__hasCollapse:function(item,selector){
+				console.log("hasCollapse")
+				return !(selector.base.indexOf(item)!=-1);
+			},
+			__toggleCollapse:function(e){
+				var model = e.model;
+				this.$.selector.select(model.item);
+			}
+		})
+	</script>
+</dom-module>
+
+<dom-module id="lazy-json-editor-add-control">
+	<style include="iron-flex">
+		paper-icon-button{
+			--paper-icon-button:{
+				width:30px;
+				height:30px;
+			};
+		}
+	</style>
+	<template>
+		<div class="layout horizontal center">
+			<paper-icon-button icon="lazy-json-editor-icons:object" on-click="clickObject"></paper-icon-button>
+			<paper-icon-button icon="lazy-json-editor-icons:array" on-click="clickArray"></paper-icon-button>
+			<paper-icon-button icon="lazy-json-editor-icons:check" on-click="clickCheck"></paper-icon-button>
+			<paper-icon-button icon="lazy-json-editor-icons:string" on-click="clickString"></paper-icon-button>
+			<paper-icon-button icon="lazy-json-editor-icons:number" on-click="clickNumber"></paper-icon-button>
+		</div>
+	</template>
+	<script>
+		Polymer({
+			is:"lazy-json-editor-add-control",
+			clickObject:function(){
+				this.fire("add-click",{
+					type:"object"
+				})
+			},
+			clickArray:function(){
+				this.fire("add-click",{
+					type:"array"
+				})
+			},
+			clickNumber:function(){
+				this.fire("add-click",{
+					type:"number"
+				})
+			},
+			clickCheck:function(){
+				this.fire("add-click",{
+					type:"boolean"
+				})
+			},
+			clickString:function(){
+				this.fire("add-click",{
+					type:"string"
+				})
+			}
+			
+		})
+	</script>
+</dom-module>
+
